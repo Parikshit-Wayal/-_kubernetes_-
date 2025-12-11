@@ -1,39 +1,39 @@
-🚀 Kubernetes Liveness Probe — Failure & Auto-Recovery Demo
+# 🚀 Kubernetes Liveness Probe — Failure & Auto-Recovery Demo
 
-A complete demonstration of how Kubernetes Liveness Probes work using a microservice that:
+A complete demonstration of how Kubernetes **Liveness Probes** work using a microservice that:
 
-Starts healthy
+1.  Starts **healthy**
+2.  Becomes **unhealthy** after 30 seconds
+3.  Triggers **livenessProbe failures**
+4.  Forces Kubernetes to **restart the container repeatedly**
 
-Becomes unhealthy after 30 seconds
+This shows Kubernetes’ **self-healing ability** in a clear, practical way.
 
-Triggers livenessProbe failures
+---
 
-Forces Kubernetes to restart the container repeatedly
+## 📌 What This Example Demonstrates
 
-This shows Kubernetes’ self-healing ability in a clear, practical way.
-
-📌 What This Example Demonstrates
-
-✔ How to create a /health endpoint
-✔ How to simulate application failure after 30 seconds
-✔ How Kubernetes detects failures
-✔ How kubelet restarts containers automatically
-✔ How to debug probe failures using logs & events
+* ✔ How to create a `/health` endpoint
+* ✔ How to simulate application failure after 30 seconds
+* ✔ How Kubernetes detects failures
+* ✔ How `kubelet` restarts containers automatically
+* ✔ How to debug probe failures using logs & events
 
 Very useful for DevOps learning, debugging, and interviews.
 
-🧩 1. Application (Python Flask) — Healthy → Unhealthy Logic
+---
+
+## 🧩 1. Application (Python Flask) — Healthy → Unhealthy Logic
 
 The application:
 
-Runs normally for 30 seconds
+* Runs normally for **30 seconds**
+* After that, returns **HTTP 500** on `/health`
+* Kubernetes restarts the container using the liveness probe
 
-After that, returns HTTP 500 on /health
-
-Kubernetes restarts the container using the liveness probe
-
-app.py
+**`app.py`**
 <img width="483" height="496" alt="flask" src="https://github.com/user-attachments/assets/80e4150d-3a17-435e-9c4a-ab96dad670a0" />
+```python
 from flask import Flask
 import time
 
@@ -52,7 +52,7 @@ def health():
     """
     if time.time() - start_time > 30:
         return "UNHEALTHY", 500   # Liveness fails
-    return "OK", 200              # Liveness passes
+    return "OK", 200             # Liveness passes
 
 @app.route("/")
 def home():
@@ -61,36 +61,47 @@ def home():
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
 
+```
+---
+
+```
 🐳 2. Dockerfile
 <img width="363" height="244" alt="dockerfile" src="https://github.com/user-attachments/assets/00817814-4481-4025-909c-79561dc85106" />
+
+Dockerfile
+
 # Base image with Python
 FROM python:3.9-slim
 
 # Working directory
+
 WORKDIR /app
 
 # Copy application
+
 COPY app.py .
 
 # Install Flask
+
 RUN pip install flask
 
 # Start app
+
 CMD ["python3", "app.py"]
 
+```
+---
+
+```
+
 ☸️ 3. Kubernetes Deployment With Liveness Probe
-
-This probe hits /health every 5 seconds.
-Once it receives 500, Kubernetes restarts the container.
-
-<img width="574" height="658" alt="yml" src="https://github.com/user-attachments/assets/fe119237-b97c-4b62-91c2-ccab2f3f2a7f" />
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: liveness-demo
+  name: liveness-demo   # Name of the deployment
 
 spec:
-  replicas: 1
+  replicas: 1           # Number of pods to run
   selector:
     matchLabels:
       app: liveness-demo
@@ -103,83 +114,100 @@ spec:
     spec:
       containers:
       - name: python-app
-        image: <your-dockerhub-user>/livenessprobe:v1
+        image: parikshit1212/livenessprobe 
+        # Replace above with your own image
 
         ports:
-        - containerPort: 5000
+        - containerPort: 5000  # App runs on port 5000
 
+        # ---------------- LIVENESS PROBE START ----------------
         livenessProbe:
+
           httpGet:
-            path: /health
-            port: 5000
+            path: /health      # Kubernetes will hit this endpoint
+            port: 5000         # On container's port 5000
 
           initialDelaySeconds: 5
+          # Wait 5 seconds before starting the first probe
+          # Allows the container time to start the app
+
           periodSeconds: 5
+          # Probe runs every 5 seconds
+
           timeoutSeconds: 2
+          # Kubelet will wait max 2 seconds for a response
+
           failureThreshold: 1
+          # If 1 failure occurs, restart the container immediately
 
-🔥 4. Deploy & Test
-Apply deployment:
-kubectl apply -f liveness-demo.yaml
+        # ---------------- LIVENESS PROBE END ----------------
 
-Watch pod restart repeatedly:
-kubectl get pods -w
 
+-----
+```
+
+## 🔥 4. Deploy & Test
+
+1.  **Apply deployment:**
+    ```bash
+    kubectl apply -f liveness-demo.yaml
+    ```
+2.  **Watch pod restart repeatedly:**
+    ```bash
+    kubectl get pods -w
+    ```
 
 After 30 seconds, the restarting will begin.
 
-📝 5. Checking Pod Status
-Describe pod to view events:
+-----
+
+## 📝 5. Checking Pod Status
+
+**Describe pod to view events:**
+
+```bash
 kubectl describe pod <pod-name>
 
-
+```
 You should see output like this:
 
-<img width="944" height="829" alt="1" src="https://github.com/user-attachments/assets/ac1fcce1-d8ae-4ee5-8c49-415c62ce9171" /> <img width="945" height="174" alt="2" src="https://github.com/user-attachments/assets/c2f72310-dfd1-499a-ba6b-cbb51c718d12" /> <img width="964" height="199" alt="3" src="https://github.com/user-attachments/assets/d62b5053-accc-43d6-8f33-0a9068b5a413" />
-These logs clearly show:
+<img width="944" height="829" alt="1" src="https://github.com/user-attachments/assets/9c06bf92-b269-427d-8af5-1ed5b2dfd2bb" />
 
-Liveness probe failed
+<br>
+<br>
 
-Failure code: 500
+<img width="945" height="174" alt="2" src="https://github.com/user-attachments/assets/eb860b61-218b-449b-a001-bb1225f2045b" />
 
-Kubelet restarted the container
+<br>
+<br>
 
-📄 6. Why Kubernetes Keeps Restarting the Container
+<img width="964" height="199" alt="3" src="https://github.com/user-attachments/assets/66f08584-db50-45b3-8c05-1d6e8c9cfdb6" />
+
+<br>
+<br>
+
+
+These contaner events clearly show:
+
+  * Liveness probe **failed**
+  * Failure code: **500**
+  * Kubelet **restarted** the container
+
+-----
+
+## 📄 6. Why Kubernetes Keeps Restarting the Container
 
 Once the app becomes unhealthy:
 
-1️⃣ /health returns 500
-2️⃣ Liveness probe fails
-3️⃣ Kubernetes kills the container
-4️⃣ Kubernetes restarts the container
-5️⃣ App runs healthy again for 30 sec
-6️⃣ App becomes unhealthy again
+1.  `/health` returns **500**
+2.  Liveness probe **fails**
+3.  Kubernetes **kills** the container
+4.  Kubernetes **restarts** the container
+5.  App runs **healthy** again for **30 sec**
+6.  App becomes **unhealthy** again
 
-🔁 This loop continues forever → confirming the probe works correctly.
+**🔁 This loop continues forever → confirming the probe works correctly.**
 
-🎯 7. What You Learn From This Example
 
-✔ How liveness probes detect failures
-✔ How Kubernetes self-heals broken apps
-✔ How to design /health endpoints
-✔ How to debug pod events and logs
-✔ Why liveness ≠ readiness ≠ startup probes
+-----
 
-🧠 Key Concept Summary
-Feature	Purpose
-Liveness Probe	Detects if the app is alive. If fails → restart container.
-Readiness Probe	Detects if app is ready to serve traffic. If fails → remove from Service endpoints.
-Startup Probe	Prevents premature restarts for slow-boot apps.
-⭐ Final Notes
-
-This setup is extremely useful for:
-
-Understanding Kubernetes internals
-
-DevOps interview preparation
-
-Learning self-healing microservice design
-
-Hands-on Kubernetes debugging
-
-give me this all info in markdown code like all strictly and formated
