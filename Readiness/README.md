@@ -1,99 +1,110 @@
-🔹 Step 1: What is a Readiness Probe?
+# 📘 **Readiness Probe :
 
-A Readiness Probe is a health check used by Kubernetes to decide:
+---
 
-👉 Should this pod receive traffic or not?
+## 🔹 Step 1: What is a Readiness Probe?
 
-If readiness probe passes → pod receives traffic
+A **Readiness Probe** is a health check used by Kubernetes to decide:
 
-If readiness probe fails → pod is removed from service traffic
+👉 **Should this pod receive traffic or not?**
 
-📌 Important:
-Readiness probe does NOT restart the container.
+- ✅ If readiness probe **passes** → pod **receives traffic**
+- ❌ If readiness probe **fails** → pod is **removed from service traffic**
 
-🔹 Step 2: Why Do We Need a Readiness Probe?
+📌 **Important**  
+Readiness probe **does NOT restart the container**.
+
+---
+
+## 🔹 Step 2: Why Do We Need a Readiness Probe?
 
 In real applications:
 
-App may start, but DB is not connected
-
-App may become temporarily unavailable
-
-App may be overloaded
+- App may start, but **DB is not connected**
+- App may become **temporarily unavailable**
+- App may be **overloaded**
 
 In these cases:
 
-App should stay running
+- App should **stay running**
+- But **should NOT receive traffic**
 
-But should NOT receive traffic
+👉 **This is exactly what the readiness probe solves.**
 
-👉 This is exactly what the readiness probe solves.
+---
 
-🔹 Step 3: Pod Creation and Initial State
+## 🔹 Step 3: Pod Creation and Initial State
 
 When the deployment is applied, the pod starts running.
 
+```bash
 kubectl get pods
+```
 
-
-At the beginning, the pod may show 0/1 READY because readiness probe has not passed yet.
+At the beginning, the pod may show 0/1 READY because the readiness probe has not passed yet.
 
 <img width="937" height="250" alt="pod" src="https://github.com/user-attachments/assets/00227f20-4e37-4ce8-a48b-f3e6cc5ad9ac" />
-
-📌 Meaning:
+📌 Meaning
 
 Pod is Running
 
 But it is NOT ready to receive traffic
 
-🔹 Step 4: Readiness Probe Endpoint in Application
+## 🔹 Step 4: Readiness Probe Endpoint in Application
 
-We created a /ready endpoint in the application.
+We created a `/ready` endpoint in the application.
 
-Behavior:
+**Behavior:**
 
-First 30 seconds → app is READY
+- First 30 seconds → app is **READY**
+- After 30 seconds → app becomes **NOT READY**
 
-After 30 seconds → app becomes NOT READY
+**Code logic (simple meaning):**
 
-Code logic (simple meaning):
+- If app runtime `< 30 sec` → return **200 (READY)**
+- If app runtime `> 30 sec` → return **503 (NOT READY)**
 
-If app runtime < 30 sec → return 200 (READY)
+📌 **Important**  
+This simulates a real dependency failure (for example, DB down).
 
-If app runtime > 30 sec → return 503 (NOT READY)
+---
+## 🔹 Step 5: Readiness Probe in Kubernetes YAML
 
-📌 This simulates a real dependency failure (like DB down).
+Kubernetes continuously calls the `/ready` endpoint.
 
-🔹 Step 5: Readiness Probe in Kubernetes YAML
+**What Kubernetes does:**
 
-Kubernetes continuously calls the /ready endpoint.
+- Calls `/ready` every **5 seconds**
+- If response is **200** → pod is marked **READY**
+- If response is **503** → pod is marked **NOT READY**
 
-What Kubernetes does:
+📌 **Important**  
+Kubernetes does **not kill the pod**, it only controls traffic.
 
-Calls /ready every 5 seconds
+---
 
-If response is 200 → pod is marked READY
 
-If response is 503 → pod is marked NOT READY
+## 🔹 Step 6: Service Creation
 
-📌 Kubernetes does not kill the pod, it only controls traffic.
+A Kubernetes **Service** is created to expose the pod.
 
-🔹 Step 6: Service Creation
-
-A Kubernetes Service is created to expose the pod.
-
+```bash
 kubectl get svc
-
+```
 <img width="722" height="183" alt="service" src="https://github.com/user-attachments/assets/8736b16b-8d79-4b07-966a-5d944090e7be" />
+<br>
+📌 Important
+Service sends traffic only to READY pods.
 
-📌 Service sends traffic only to READY pods.
+---
 
-🔹 Step 7: Endpoints Behavior (Most Important Concept)
+## 🔹 Step 7: Endpoints Behavior (Most Important Concept)
 
 You monitored service endpoints:
 
+```bash
 kubectl get endpoints readiness-service -w
-
+```
 <img width="558" height="168" alt="endpoint" src="https://github.com/user-attachments/assets/7c7f909e-16c1-4fe4-8f72-b89a4d5d5a91" />
 Meaning:
 
@@ -101,22 +112,24 @@ Meaning:
 
 Pod IP appears → Pod is ready → traffic allowed
 
-📌 Readiness probe directly controls service endpoints.
+📌 Important
+Readiness probe directly controls service endpoints.
 
-🔹 Step 8: Events Showing Readiness Probe Failure
+---
+
+## 🔹 Step 8: Events Showing Readiness Probe Failure
 
 You checked pod events:
 
+```bash
 kubectl describe pod <pod-name>
-
-<img width="949" height="221" alt="events" src="https://github.com/user-attachments/assets/df0ebf65-8136-4f3b-9f03-5153028f1da3" />
-
+```
 You saw:
+<img width="949" height="221" alt="events" src="https://github.com/user-attachments/assets/df0ebf65-8136-4f3b-9f03-5153028f1da3" />
+<br>
 
 Readiness probe failed: HTTP probe failed with statuscode 503
-
-
-📌 Important:
+📌 Important
 
 ❌ Container is NOT restarted
 
@@ -124,20 +137,25 @@ Readiness probe failed: HTTP probe failed with statuscode 503
 
 ✅ Only traffic is stopped
 
-🔹 Step 9: Pod Status Change (Key Observation)
+---
+
+
+## 🔹 Step 9: Pod Status Change (Key Observation)
 
 You ran:
 
+```bash
 kubectl get pods -w
-
-<img width="632" height="193" alt="running" src="https://github.com/user-attachments/assets/6904405c-8641-4474-b0ca-3ee541bc7161" />
+```
 Output:
+<img width="937" height="250" alt="pod" src="https://github.com/user-attachments/assets/00227f20-4e37-4ce8-a48b-f3e6cc5ad9ac" />
+<>
+text
+Copy code
 READY   STATUS
 0/1     Running
 1/1     Running
-
-
-📌 Meaning:
+📌 Meaning
 
 Running → container is alive
 
@@ -145,16 +163,17 @@ Running → container is alive
 
 1/1 → pod is receiving traffic
 
-🔹 Step 10: Traffic Test Using Curl
-
+---
+## 🔹 Step 10: Traffic Test Using Curl
 You tested traffic via the service.
 
-When Readiness FAILED:
+When Readiness FAILED
+bash
+```
 curl readiness-service
-
+```
 <img width="704" height="200" alt="failes to connect" src="https://github.com/user-attachments/assets/8e8d10c5-3d81-478d-bbd0-be36eaabee90" />
-
-📌 Reason:
+📌 Reason
 
 Pod was NOT ready
 
@@ -162,20 +181,20 @@ Service had no endpoints
 
 Traffic was blocked
 
-When Readiness PASSED:
+When Readiness PASSED
+bash
+```
 curl readiness-service
-
-
-Response:
+```
+<img width="632" height="193" alt="running" src="https://github.com/user-attachments/assets/ba717392-8cb8-4f67-b912-f5c847592a1b" />
+<br>
+Response
 
 App is running
-
-
-📌 Traffic works because pod is READY.
+📌 Traffic works because the pod is READY.
 
 🔹 Step 11: Final Flow Summary
-When Readiness Probe FAILS:
-
+When Readiness Probe FAILS
 Pod status → Running
 
 READY → 0/1
@@ -186,8 +205,7 @@ Traffic → ❌ stopped
 
 Restart → ❌ NO
 
-When Readiness Probe PASSES:
-
+When Readiness Probe PASSES
 Pod status → Running
 
 READY → 1/1
@@ -197,17 +215,4 @@ Endpoints → Pod IP
 Traffic → ✅ allowed
 
 🔹 Final One-Line Summary (Documentation Ready)
-
 Readiness probe checks whether a pod is ready to receive traffic. If it fails, Kubernetes removes the pod from service endpoints without restarting it, ensuring traffic is routed only to ready and healthy pods.
-
-✅ Conclusion
-
-Readiness probe working correctly
-
-Traffic controlled properly
-
-No container restart
-
-Real production-like behavior
-
-If you want next, I can document Startup Probe or All 3 Probes Together in the same format 👍
